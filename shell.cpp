@@ -119,7 +119,7 @@ namespace
         //Receive user command and display prompt.
         void fill_buffer()
         {
-            std::cout << "\u001b[36mlinux (sg264)|> \u001b[0m";
+            std::cout << "\u001b[36mlinux (sg264)|" << get_current_dir_name() << "> \u001b[0m";
             std::getline(std::cin, buf);
         }
 
@@ -130,10 +130,19 @@ namespace
             //Replace all delimiters with newline for simple parsing, then
             //insert in current command's argument buffer
             for(char& ch : buf) if(FIND_DELIM(ch)) ch = '\n';
+
+            //Checks to see if user entered only delimiters
+            if(std::find_if_not(std::cbegin(buf),
+                                std::cend(buf),
+                                [](char ch){return ch == '\n';}) == std::cend(buf))
+            {
+                cur.name = "NULL";
+                return;
+            }
             std::istringstream ss{buf};
             cur.argv.assign(std::istream_iterator<std::string>(ss), {});
 
-            //Find entry mapping in lookup table, if exists
+            //Find entry in lookup table, if exists
             auto iter = Command::lookup_table.find(cur.argv[0]);
             if(iter != std::cend(Command::lookup_table))
             {
@@ -148,8 +157,11 @@ namespace
         //Executes current command
         void execute()
         {
-            if(cur.name == "exit") std::exit(0);
-            else if(cur.name == "help") { help(); return; }
+
+            //Check for special cases and take appropriate action.
+            if	   (cur.name == "NULL") 	return;
+            else if(cur.name == "exit") 	std::exit(0);
+            else if(cur.name == "help") { 	help(); return; }
 
             //Parent
             if(auto pid = fork(); pid > 0)
