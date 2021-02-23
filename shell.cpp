@@ -159,9 +159,9 @@ namespace
         {
 
             //Check for special cases and take appropriate action.
-            if	   (cur.name == "NULL") 	return;
-            else if(cur.name == "exit") 	std::exit(0);
-            else if(cur.name == "help") { 	help(); return; }
+            if     (cur.name == "NULL")         return;
+            else if(cur.name == "exit")         std::exit(0);
+            else if(cur.name == "help") {       help(); return; }
 
             //Parent
             if(auto pid = fork(); pid > 0)
