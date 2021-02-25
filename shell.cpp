@@ -42,6 +42,8 @@
 #include <iterator>
 #include <unordered_map>
 #include <utility>
+#include <tuple>
+#include <cstring>
 
 //C POSIX API
 #include <sys/wait.h>
@@ -53,13 +55,14 @@
 
 namespace
 {
-    using lookup_table_t = std::unordered_map<std::string, std::pair<std::string, bool>>;
     bool terminate = false; //Set if exec() fails and requires child termination.
+    using lookup_table_t = std::unordered_map<std::string, std::tuple<std::string, bool, std::vector<std::string>, std::string>>;
 
     //This structure holds the data for a command
     struct Command
     {
         std::string name{};
+        std::string init_msg{};
         int argc{};
         std::vector<std::string> argv;
         bool bg_flag = false;
@@ -70,26 +73,36 @@ namespace
             argv.clear();
             argc = 0;
             name = "";
+            init_msg = "";
             bg_flag = false;
         }
 
-        //Lookup table contains mappings of command to filename, and the boolean 
-        //is set/unset if the program is to run in the background/foreground, respectively
+        //Lookup table contains mappings of command to filename
+        //	The format is as follows:
+        //
+        //	COMMAND(command, filename, bg, init_args, init_msg);	
+        //
+        //	-Set background-flag for program to execute in the background.
+        //	-init_msg will display before the requested program executes
+        //
+
+
+        #define COMMAND(command, filename, bg, init_args, init_msg)\
+            {command,{filename, bg, init_args, init_msg}}
         static inline const lookup_table_t lookup_table =
         {
-            {"C",{"cp", false}},
-            {"D",{"rm",false}},
-            {"E",{"echo",false}},
-            {"H",{"help",false}},
-            {"L",{"ls",false}},
-            {"M",{"nano",false}},
-            {"P",{"more",false}},
-            {"W",{"clear",false}},
-            {"S",{"firefox",true}},
-            {"Q",{"exit",false}},
-            {"W",{"clear",false}}
+            COMMAND("C",        "cp",        0,    {},        ""),
+            COMMAND("D",        "rm",        0,    {},        ""),
+            COMMAND("E",        "echo",      0,    {},        ""),
+            COMMAND("H",	"help",      0,    {},        ""),
+            COMMAND("L",	"ls",        0,    {"-l"},    get_current_dir_name()),
+            COMMAND("M",	"nano",      0,    {},        ""),
+            COMMAND("P",	"more",      0,    {},        ""),
+            COMMAND("W",	"clear",     0,    {},        ""),
+            COMMAND("S",	"firefox",   1,    {},        ""),
+            COMMAND("Q",	"exit",      0,    {},        "")
         };
-
+        #undef COMMAND
     };
 
     //Instance of a shell.
@@ -98,7 +111,12 @@ namespace
     private:
         std::string buf{}; //Holds raw character sequence
         Command cur;	   //Parsed current command
-        Shell() = default; //Private constructor (singleton)
+
+        Shell()
+        {
+            std::cout << "\n\nCopyright (c) Saikishore Gowrishankar 2021. All rights reserved\n"
+                      << "All owned trademarks belong to their respective owners. Lawyers love tautologies :)\n\n";
+        }
 
         //Displays "man pages" for the shell
         static void help()
@@ -139,6 +157,7 @@ namespace
                 cur.name = "NULL";
                 return;
             }
+
             std::istringstream ss{buf};
             cur.argv.assign(std::istream_iterator<std::string>(ss), {});
 
@@ -146,8 +165,13 @@ namespace
             auto iter = Command::lookup_table.find(cur.argv[0]);
             if(iter != std::cend(Command::lookup_table))
             {
-                cur.name = (iter->second).first; 	//Mapped name
-                cur.bg_flag = (iter->second).second;	//Background flag
+                cur.name = std::get<0>(iter->second);		//Mapped name
+                cur.bg_flag = std::get<1>(iter->second);	//Background flag
+
+                if(auto args = std::get<2>(iter->second); !std::empty(args))
+                    cur.argv.insert(std::end(cur.argv), std::begin(args), std::end(args));
+
+                cur.init_msg = std::get<3>(iter->second);
             }
             else cur.name = cur.argv[0];	//Attempt execution if name not found in lookup table
 
@@ -168,7 +192,7 @@ namespace
             {
                 if(!cur.bg_flag)
                 {
-                    if(waitpid(pid, nullptr, 0) < 0) throw "wait() failed to reap child";
+                    if(waitpid(pid, nullptr, 0) < 0) throw "waitpid() failed to reap child";
                 }
                 else std::cout << "Running in BG\n";
                 cur.reset();
@@ -181,6 +205,8 @@ namespace
                 std::vector<const char*> args{};
                 std::transform(std::begin(cur.argv), std::end(cur.argv), std::back_inserter(args),
                     [](std::string const& str){ return str.c_str();});
+
+                std::cout << cur.init_msg << (std::empty(cur.init_msg)?"":"\n");
 
                 //Execute requested function
                 execvp(cur.name.c_str(), const_cast<char* const*>(args.data()));
