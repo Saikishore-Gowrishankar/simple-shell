@@ -5,33 +5,7 @@
 
     Copyright (c) Saikishore Gowrishankar 2021. All rights reserved.
     All owned trademarks belong to their respective owners. Lawyers love tautologies.
-
 */
-
-// ACADEMIC INTEGRITY PLEDGE
-//
-// - I have not used source code obtained from another student nor
-//   any other unauthorized source, either modified or unmodified.
-//
-// - All source code and documentation used in my program is either
-//   my original work or was derived by me from the source code
-//   published in the textbook for this course or presented in
-//   class.
-//
-// - I have not discussed coding details about this project with
-//   anyone other than my instructor. I understand that I may discuss
-//   the concepts of this program with other students and that another
-//   student may help me debug my program so long as neither of us
-//   writes anything during the discussion or modifies any computer
-//   file during the discussion.
-//
-// - I have violated neither the spirit nor letter of these restrictions.
-//
-//
-//
-// Signed:__________Saikishore Gowrishankar____________ Date:___02/21/21______
-
-// 3460:426 Lab 1 - Basic C shell rev. 9/10/2020
 
 //Standard includes
 #include <string>
